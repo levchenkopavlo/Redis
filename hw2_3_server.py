@@ -8,6 +8,8 @@
 import socket
 import threading
 import redis
+import time
+
 
 def client_login():
     while True:
@@ -21,13 +23,13 @@ def client_login():
                 print(f'{key}: {value}')
             client.send(f'{name}, welcome to chat'.encode())
             print(f'{name}, welcome to chat')
-            # old broadcast without Redis
-            # thread_chat = threading.Thread(target=message_processor, args=(client,))
-            # thread_chat.start()
 
-            message_receiver()
+            thread_chat = threading.Thread(target=message_receiver, args=(client,))
+            thread_chat.start()
+
         except:
             continue
+
 
 def message_receiver(client):
     while True:
@@ -39,30 +41,18 @@ def message_receiver(client):
             print('client deleted')
             break
         else:
-            server.lpush('messages',    client+msg)
-def message_sender(client):
+            server_R.lpush('messages', clients[client] + ': ' + msg)
+
+
+def message_sender():
     while True:
-        if server.llen('messages'):
+        if server_R.llen('messages'):
+            msg = server_R.lrange('messages', -1, -1)
             for user in clients:
-                if user != client:
-                    user.send(msg.encode())
-
-def message_processor(client):
-    while True:
-        msg = client.recv(1024).decode()
-        if msg == 'exit':
-            print(client)
-            client.close()
-            del clients[client]
-            print('client deleted')
-            break
-
-        msg = f'{clients[client]} say: ' + msg
-        print(msg)
-
-        for user in clients:
-            if user != client:
-                user.send(msg.encode())
+                user.send(msg[0].encode())
+            server_R.rpop('messages')
+        else:
+            time.sleep(1)
 
 
 if __name__ == "__main__":
@@ -74,9 +64,12 @@ if __name__ == "__main__":
 
     clients = {}
 
-    server = redis.Redis(host='localhost', port=6379, db=0, decode_responses=True)
+    server_R = redis.Redis(host='localhost', port=6379, db=0, decode_responses=True)
 
     thread_main = threading.Thread(target=client_login, args=())
     thread_main.start()
+
+    thread_chat = threading.Thread(target=message_sender, args=())
+    thread_chat.start()
 
     thread_main.join()
