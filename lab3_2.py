@@ -63,6 +63,7 @@ class Museum:
             'admin': self.current_admin,
             'name': exhibit_data.get('name', ''),
             'description': exhibit_data.get('description', ''),
+            'criteria': exhibit_data.get('criteria', ''),
         }
 
         self.redis.hset(exhibit_key, mapping=data)
@@ -134,7 +135,6 @@ class Museum:
             exhibit_id = key.split(':')[-1]
 
             if exhibit_id.isdigit():
-
                 print(f'Дані про експонат з ID {exhibit_id}')
                 self.view_exhibit_info(exhibit_id)
 
@@ -150,11 +150,27 @@ class Museum:
             if exhibit_id.isdigit():
                 exhibit_people_key = self._get_exhibit_people_key(exhibit_id)
                 people = self.redis.smembers(exhibit_people_key)
+                if person in people:
+                    print(f'Дані про експонат з ID {exhibit_id}')
+                    self.view_exhibit_info(exhibit_id)
 
-                print(f'Дані про експонат з ID {exhibit_id}')
-                self.view_exhibit_info(exhibit_id)
+                    print()
 
-                print()
+    def view_exhibits_by_criteria(self, criteria):
+        pattern_key = self._get_exhibit_key('*')
+        exhibits_keys = self.redis.keys(pattern=pattern_key)
+
+        for key in exhibits_keys:
+            exhibit_id = key.split(':')[-1]
+
+            if exhibit_id.isdigit():
+                exhibit_key = self._get_exhibit_key(exhibit_id)
+                exhibit_data = self.redis.hgetall(exhibit_key)
+                if exhibit_data.get("criteria") == criteria:
+                    print(f'Дані про експонат з ID {exhibit_id}')
+                    self.view_exhibit_info(exhibit_id)
+
+                    print()
 
     def view_related_people(self, exhibit_id):
         exhibit_key = self._get_exhibit_key(exhibit_id)
@@ -187,6 +203,7 @@ while True:
     print('6. Вивести інформацію про всі експонати')
     print('7. Вивести інформацію про пов\'язаних особистостей експонату')
     print('8. Експонати пов\'язані з людиною')
+    print('9. Експонати по критерію')
     command = int(input('Введіть номер команди: '))
 
     if command == 1:
@@ -211,7 +228,8 @@ while True:
         exhibit_data = {
             'name': input('введіть ім\'я експоната: '),
             'description': input('введіть опис експоната: '),
-            'people': input('введіть пов\'язаних з експонатом людей: ').split(',')
+            'people': input('введіть пов\'язаних з експонатом людей: '),
+            'criteria': input('введіть id критерію класифікації експонату: ').split(',')
         }
 
         musuem.add_exhibit(exhibit_id, exhibit_data)
@@ -241,6 +259,10 @@ while True:
         musuem.view_related_people(exhibit_id)
         print('=====================================')
     elif command == 8:
-        person = 'lesia'
+        person = input('Введіть особистість для пошуку пов\'язаного експонату: ')
         musuem.view_related_exhibits(person)
+        print('=====================================')
+    elif command == 9:
+        criteria = input('Введіть для пошуку експонатів: ')
+        musuem.view_exhibits_by_criteria(criteria)
         print('=====================================')
