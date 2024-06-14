@@ -134,10 +134,45 @@ class Museum:
             exhibit_id = key.split(':')[-1]
 
             if exhibit_id.isdigit():
+
                 print(f'Дані про експонат з ID {exhibit_id}')
                 self.view_exhibit_info(exhibit_id)
 
                 print()
+
+    def view_related_exhibits(self, person):
+        pattern_key = self._get_exhibit_key('*')
+        exhibits_keys = self.redis.keys(pattern=pattern_key)
+
+        for key in exhibits_keys:
+            exhibit_id = key.split(':')[-1]
+
+            if exhibit_id.isdigit():
+                exhibit_people_key = self._get_exhibit_people_key(exhibit_id)
+                people = self.redis.smembers(exhibit_people_key)
+
+                print(f'Дані про експонат з ID {exhibit_id}')
+                self.view_exhibit_info(exhibit_id)
+
+                print()
+
+    def view_related_people(self, exhibit_id):
+        exhibit_key = self._get_exhibit_key(exhibit_id)
+
+        if not self.redis.exists(exhibit_key):
+            print('Немає експоната в базі даних музею')
+            return
+
+        exhibit_data = self.redis.hgetall(exhibit_key)
+
+        exhibit_people_key = self._get_exhibit_people_key(exhibit_id)
+
+        people = self.redis.smembers(exhibit_people_key)
+
+        if people:
+            print('Пов\'язані особистості: ')
+            for name in people:
+                print(f'\t{name}')
 
 
 musuem = Museum()
@@ -150,7 +185,8 @@ while True:
     print('4. Видалити експонат')
     print('5. Вивести інформацію про експонат')
     print('6. Вивести інформацію про всі експонати')
-
+    print('7. Вивести інформацію про пов\'язаних особистостей експонату')
+    print('8. Експонати пов\'язані з людиною')
     command = int(input('Введіть номер команди: '))
 
     if command == 1:
@@ -199,4 +235,12 @@ while True:
     elif command == 6:
         musuem.view_all_exhibits()
         print('=====================================')
+        print('=====================================')
+    elif command == 7:
+        exhibit_id = int(input('Введіть id експоната: '))
+        musuem.view_related_people(exhibit_id)
+        print('=====================================')
+    elif command == 8:
+        person = 'lesia'
+        musuem.view_related_exhibits(person)
         print('=====================================')
